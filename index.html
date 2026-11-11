@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chivor Emerald AI — Robot Detector de Vetas y Control de Voladura</title>
+<style>
+    :root {
+        --bg: #080c10;
+        --panel: #101720;
+        --panel-alt: #15202b;
+        --border: #223244;
+        --accent: #00e676;
+        --accent-dim: rgba(0, 230, 118, 0.14);
+        --cyan: #29b6f6;
+        --gold: #ffd54f;
+        --danger: #ff5252;
+        --magenta: #e040fb;
+        --text: #eceff1;
+        --muted: #90a4ae;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        padding-bottom: 80px;
+    }
+    .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(8, 12, 16, 0.92);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 18px;
+        color: #fff;
+    }
+    .laser-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--accent);
+        animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.25); opacity: 0.65; }
+    }
+    .nav-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .nav-btn {
+        background: var(--panel-alt);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .nav-btn:hover, .nav-btn.primary {
+        background: var(--accent);
+        color: #04120a;
+        border-color: var(--accent);
+    }
+    .container { max-width: 1240px; margin: 0 auto; padding: 28px 18px; }
+    .hero {
+        background: radial-gradient(circle at top right, rgba(0,230,118,0.16), transparent 55%),
+                    linear-gradient(135deg, #0c1f19 0%, #0f1722 100%);
+        border: 1px solid #1e4635;
+        border-radius: 18px;
+        padding: 36px 32px;
+        margin-bottom: 32px;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    }
+    .tag {
+        display: inline-block;
+        background: var(--accent-dim);
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        margin-bottom: 14px;
+    }
+    .hero h1 { font-size: clamp(24px, 3.5vw, 36px); margin-bottom: 12px; color: #fff; line-height: 1.25; }
+    .hero p { color: #b0bec5; font-size: 16px; max-width: 900px; margin-bottom: 20px; }
+    .kpi-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+        margin-top: 20px;
+    }
+    .kpi {
+        background: rgba(16, 23, 32, 0.85);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+    .kpi .val { font-size: 24px; font-weight: 800; color: var(--accent); }
+    .kpi .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    h2.sec-title {
+        font-size: 22px;
+        margin: 40px 0 16px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Interactive Sample Viewer */
+    .viewer-box {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .sample-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .tab-btn {
+        flex: 1;
+        min-width: 170px;
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 12px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.2s;
+    }
+    .tab-btn:hover { border-color: var(--cyan); }
+    .tab-btn.active {
+        background: rgba(0, 230, 118, 0.14);
+        border-color: var(--accent);
+        box-shadow: 0 0 16px rgba(0, 230, 118, 0.18);
+    }
+    .tab-btn .t-num { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+    .tab-btn .t-name { font-size: 14px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .tab-btn .t-sub { font-size: 12px; color: var(--muted); }
+
+    .metrics-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .m-pill {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+    }
+    .m-pill .m-title { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .m-pill .m-val { font-size: 20px; font-weight: 800; margin-top: 2px; }
+    .bar-track { height: 6px; background: #0b1016; border-radius: 99px; margin-top: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+
+    .stage-img-wrap {
+        position: relative;
+        background: #05080b;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        text-align: center;
+    }
+    .stage-img-wrap img {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: zoom-in;
+        transition: transform 0.3s ease;
+    }
+    .stage-img-wrap img.zoomed {
+        transform: scale(1.65);
+        cursor: zoom-out;
+    }
+    .sample-desc {
+        margin-top: 14px;
+        padding: 14px 18px;
+        background: rgba(41, 182, 246, 0.08);
+        border-left: 4px solid var(--cyan);
+        border-radius: 8px;
+        font-size: 15px;
+        color: #dbe4eb;
+    }
+
+    /* Interactive Borehole & Blasting Simulator */
+    .sim-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 20px;
+    }
+    @media (max-width: 900px) {
+        .sim-grid { grid-template-columns: 1fr; }
+    }
+    .sim-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 22px;
+    }
+    .slider-wrap { margin: 16px 0; }
+    .slider-wrap label {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        height: 8px;
+        cursor: pointer;
+    }
+    canvas#boreholeCanvas {
+        width: 100%;
+        height: 280px;
+        background: #070b0f;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: block;
+    }
+    .sensor-readout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 14px;
+    }
+    .s-box {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .s-box .s-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .s-box .s-num { font-size: 20px; font-weight: 800; font-family: monospace; margin-top: 4px; }
+    .alert-banner {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        border: 1px solid var(--border);
+    }
+
+    /* Interactive BOM & ROI Calculator */
+    table.bom-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    table.bom-table th, table.bom-table td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+    }
+    table.bom-table th { background: #182432; color: var(--accent); }
+    table.bom-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .chk-col { width: 42px; text-align: center; }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <span class="laser-dot"></span>
+        <span>CHIVOR EMERALD AI <small style="color:var(--muted);font-weight:400;">// LIF 680nm + Sonda Acústica</small></span>
+    </div>
+    <div class="nav-links">
+        <a href="#muestras" class="nav-btn">1. Visión IA en tus Piedras</a>
+        <a href="#simulador" class="nav-btn">2. Simulador de Barreno y Explosivos</a>
+        <a href="#presupuesto" class="nav-btn">3. Presupuesto Interactivo (BOM)</a>
+        <a href="Reporte_Robot_Detector_Chivor.pdf" download class="nav-btn primary">⬇ Descargar PDF</a>
+    </div>
+</nav>
+
+<div class="container">
+    <section class="hero">
+        <span class="tag">Proyecto de Explotación Inteligente — Chivor, Boyacá</span>
+        <h1>Robot Detector de Vetas Esmeraldíferas y Control Quirúrgico de Voladura</h1>
+        <p>Inspirado en el sistema robótico láser <em>Stingray</em> y adaptado a la geología de <strong>Chivor</strong>: combina <strong>Fluorescencia Inducida por Láser ($\text{Cr}^{3+}$ a 680 nm)</strong>, <strong>Visión Artificial Mineralógica</strong>, <strong>Sonda Endoscópica de Barrenos</strong> y <strong>Ultrasonido Acústico (40–50 kHz)</strong> para localizar vetas ocultas antes de dinamitar y evitar destruir los cristales.</p>
+        <div class="kpi-row">
+            <div class="kpi">
+                <div class="val">680–695 nm</div>
+                <div class="lbl">Firma Láser del Cromo (Cr³⁺) en Esmeralda</div>
+            </div>
+            <div class="kpi">
+                <div class="val">0.12% → 25.1%</div>
+                <div class="lbl">De chispa externa a Alfombra de Cristales</div>
+            </div>
+            <div class="kpi">
+                <div class="val">1.5 a 2.5 m</div>
+                <div class="lbl">Anticipación dentro del Frente (Barrenos)</div>
+            </div>
+            <div class="kpi">
+                <div class="val">~$4,200 USD</div>
+                <div class="lbl">Costo Prototipo Completo Fase 1</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 1: INTERACTIVE SPECIMEN VIEWER -->
+    <h2 class="sec-title" id="muestras">1. Explorador Interactivo de tus 5 Muestras Reales de Chivor</h2>
+    <div class="viewer-box">
+        <div class="sample-tabs" id="sampleTabs"></div>
+
+        <div class="metrics-bar">
+            <div class="m-pill">
+                <div class="m-title">Esmeralda Detectada (Cr³⁺)</div>
+                <div class="m-val" id="valEmerald" style="color:var(--accent);">0.77%</div>
+                <div class="bar-track"><div class="bar-fill" id="barEmerald" style="background:var(--accent);width:10%;"></div></div>
+            </div>
+            <div class="m-pill">
+                <div class="m-title">Cama Hidrotermal (Albita)</div>
+                <div class="m-val" id="valAlbite" style="color:var(--cyan);">32.0%</div>
+                <div class="bar-track"><div class="bar-fill" id="barAlbite" style="background:var(--cyan);width:32%;"></div></div>
+            </div>
+            <div class="m-pill">
+                <div class="m-title">Cordones Guía de Pirita (FeS₂)</div>
+                <div class="m-val" id="valPyrite" style="color:var(--gold);">6.66%</div>
+                <div class="bar-track"><div class="bar-fill" id="barPyrite" style="background:var(--gold);width:15%;"></div></div>
+            </div>
+            <div class="m-pill">
+                <div class="m-title">Targets Láser / Acción Voladura</div>
+                <div class="m-val" id="valTargets" style="color:var(--danger);">5 Targets</div>
+                <div style="font-size:12px;color:#ff8a80;margin-top:4px;font-weight:700;" id="valAction">BLOQUEAR INDUGEL EN VETA</div>
+            </div>
+        </div>
+
+        <div class="stage-img-wrap">
+            <img id="mainStageImg" src="assets/hud_1_bloque_veta_perfil.png" alt="HUD Análisis Mineralógico" title="Haz clic para hacer Zoom" onclick="this.classList.toggle('zoomed')" />
+        </div>
+        <div style="font-size:12px;color:var(--muted);text-align:right;margin-top:6px;">💡 Haz clic sobre la imagen para activar/desactivar el Zoom de alta resolución.</div>
+        <div class="sample-desc" id="sampleDesc"></div>
+    </div>
+
+    <!-- SECTION 2: INTERACTIVE BOREHOLE & BLASTING SIMULATOR -->
+    <h2 class="sec-title" id="simulador">2. Simulador Interactivo: Sonda Endoscópica de Barreno y Control de Explosivos</h2>
+    <p style="color:var(--muted);margin-bottom:16px;">Mueve el control deslizante para introducir la <strong>Sonda Multi-Sensor (Láser 405nm/680nm + Bobina de Pirita + Ultrasonido)</strong> dentro de un barreno perforado de 2.0 metros en el frente de tu mina en Chivor y observa cómo detecta la "cama" antes de meter el explosivo:</p>
+
+    <div class="sim-grid">
+        <div class="sim-card">
+            <div class="slider-wrap">
+                <label>
+                    <span>Profundidad de la Sonda dentro del Barreno:</span>
+                    <span id="depthLabel" style="color:var(--accent);font-size:18px;">0.45 m</span>
+                </label>
+                <input type="range" id="depthSlider" min="0" max="200" value="45" oninput="updateSimulator(this.value)" />
+            </div>
+            <canvas id="boreholeCanvas" width="700" height="280"></canvas>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:8px;">
+                <span>0.0 m (Boca del Túnel)</span>
+                <span>0.95 m (Zona de Pirita)</span>
+                <span>1.25 m (Veta Albita + Esmeralda)</span>
+                <span>2.0 m (Fondo)</span>
+            </div>
+        </div>
+
+        <div class="sim-card">
+            <h3 style="color:#fff;margin-bottom:10px;font-size:17px;">Lectura de Sensores en Tiempo Real</h3>
+            <div class="sensor-readout">
+                <div class="s-box">
+                    <div class="s-lbl">Fluorescencia Láser 680 nm (Cr³⁺)</div>
+                    <div class="s-num" id="simLif" style="color:var(--accent);">12 cuentas (Base)</div>
+                </div>
+                <div class="s-box">
+                    <div class="s-lbl">Inducción Pirita (FeS₂)</div>
+                    <div class="s-num" id="simPyr" style="color:var(--gold);">0.8 mV (Bajo)</div>
+                </div>
+                <div class="s-box">
+                    <div class="s-lbl">Velocidad Ultrasónica (Densidad)</div>
+                    <div class="s-num" id="simAcou" style="color:var(--cyan);">4,850 m/s (Densa)</div>
+                </div>
+                <div class="s-box">
+                    <div class="s-lbl">Cámara Interior (Reflectancia)</div>
+                    <div class="s-num" id="simAlb" style="color:#fff;">Lodolita Gris</div>
+                </div>
+            </div>
+            <div class="alert-banner" id="simAlert"></div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: INTERACTIVE BOM & ROI CALCULATOR -->
+    <h2 class="sec-title" id="presupuesto">3. Configurador Interactivo de Hardware y Presupuesto (Fase 1)</h2>
+    <p style="color:var(--muted);margin-bottom:14px;">Selecciona o desmarca los módulos para calcular la inversión de cada etapa del prototipo:</p>
+
+    <table class="bom-table">
+        <thead>
+            <tr>
+                <th class="chk-col">Incluir</th>
+                <th>Módulo / Componente</th>
+                <th>Especificación Técnica</th>
+                <th>Función en el Corte de Chivor</th>
+                <th>Costo (USD)</th>
+            </tr>
+        </thead>
+        <tbody id="bomBody"></tbody>
+        <tfoot>
+            <tr style="background:rgba(0,230,118,0.12);font-weight:800;font-size:16px;">
+                <td colspan="4" style="text-align:right;color:#fff;">INVERSIÓN TOTAL DE MÓDULOS SELECCIONADOS:</td>
+                <td id="bomTotal" style="color:var(--accent);">$4,200 USD</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<script>
+const SAMPLES = [
+    {
+        id: 1,
+        shortTitle: "1. Bloque Perfil (4mm)",
+        sub: "Veta milimétrica en base",
+        img: "assets/hud_1_bloque_veta_perfil.png",
+        emerald: 0.77,
+        albite: 32.0,
+        pyrite: 6.66,
+        targets: 5,
+        action: "BLOQUEAR EXPLOSIVO EN BASE",
+        desc: "<strong>Muestra 1 (Vista de Perfil):</strong> El 95% del bloque es lodolita gris albitizada muy dura y compacta. En la base apenas se asoma una costura de 4 mm (0.77% del área). El canal láser de 680 nm la enciende en rojo intenso y la IA traza el plano estructural (línea magenta) advirtiendo que no se debe detonar carga sobre ese plano."
+    },
+    {
+        id: 2,
+        shortTitle: "2. Alfombra de Esmeralda",
+        sub: "Muestra 1 abierta por la veta",
+        img: "assets/hud_2_bloque_alfombra_esmeralda.png",
+        emerald: 25.08,
+        albite: 30.1,
+        pyrite: 6.25,
+        targets: 8,
+        action: "EXTRACCIÓN CON CUÑA / CINCEL",
+        desc: "<strong>Muestra 1 (Plano Abierto):</strong> Al abrir la roca exactamente por la costura de 4 mm de la foto anterior, aparece una 'alfombra' con 25.08% de superficie cubierta de cristales de esmeralda verde-azulada sobre cama blanca de albita. Un solo tiro de Indugel habría cizallado y pulverizado toda esta plancha."
+    },
+    {
+        id: 3,
+        shortTitle: "3. Canutillo en Matriz",
+        sub: "Prisma hexagonal + Albita",
+        img: "assets/hud_3_canutillo_matriz.png",
+        emerald: 5.67,
+        albite: 26.8,
+        pyrite: 15.75,
+        targets: 3,
+        action: "SEPARACIÓN EN CAJA FUERTE",
+        desc: "<strong>Muestra 2 (Frente con Canutillo):</strong> El modelo fija el retículo láser sobre el cristal prismático principal y dos gemas secundarias (5.67% del área), rodeadas por un 26.8% de matriz blanca de albita/carbonato y un 15.75% de sulfuros (pirita)."
+    },
+    {
+        id: 4,
+        shortTitle: "4. Cordones de Pirita",
+        sub: "Vector guía electromagnético",
+        img: "assets/hud_4_cordones_pirita.png",
+        emerald: 0.78,
+        albite: 25.7,
+        pyrite: 27.57,
+        targets: 1,
+        action: "VECTOR GUÍA DE VETA ACTIVO",
+        desc: "<strong>Muestra 2 (Reverso Mineralizado):</strong> Aquí se observa el secreto para predecir la veta antes de tocar la esmeralda: el 27.57% de la superficie son bandas doradas de micro-pirita (FeS₂) bordeando la cama de albita. La bobina inductiva de la sonda detecta este pico metálico dentro del barreno."
+    },
+    {
+        id: 5,
+        shortTitle: "5. Costura Lateral (0.12%)",
+        sub: "Detección de micro-chispas",
+        img: "assets/hud_5_costura_lateral.png",
+        emerald: 0.12,
+        albite: 25.1,
+        pyrite: 10.49,
+        targets: 3,
+        action: "ALERTA TEMPRANA EN BARRENO",
+        desc: "<strong>Muestra 1 (Canto Lateral):</strong> Vista de filo donde la esmeralda representa apenas el 0.12% de los píxeles (tres puntos milimétricos en la corona superior). En la oscuridad y el lodo del túnel el ojo humano los pasa por alto, pero el filtro interferencial de 680 nm los detecta al instante."
+    }
+];
+
+function initTabs() {
+    const wrap = document.getElementById("sampleTabs");
+    wrap.innerHTML = SAMPLES.map((s, i) => `
+        <button class="tab-btn ${i===0?'active':''}" onclick="selectSample(${i})" id="tab_${i}">
+            <div class="t-num">Muestra #${s.id}</div>
+            <div class="t-name">${s.shortTitle}</div>
+            <div class="t-sub">${s.sub}</div>
+        </button>
+    `).join("");
+    selectSample(0);
+}
+
+function selectSample(idx) {
+    const s = SAMPLES[idx];
+    document.querySelectorAll(".tab-btn").forEach((b, i) => b.classList.toggle("active", i === idx));
+    const img = document.getElementById("mainStageImg");
+    img.classList.remove("zoomed");
+    img.src = s.img;
+    document.getElementById("valEmerald").textContent = s.emerald.toFixed(2) + "%";
+    document.getElementById("barEmerald").style.width = Math.min(100, Math.max(6, s.emerald * 3.5)) + "%";
+    document.getElementById("valAlbite").textContent = s.albite.toFixed(1) + "%";
+    document.getElementById("barAlbite").style.width = Math.min(100, s.albite * 2.5) + "%";
+    document.getElementById("valPyrite").textContent = s.pyrite.toFixed(2) + "%";
+    document.getElementById("barPyrite").style.width = Math.min(100, s.pyrite * 3.0) + "%";
+    document.getElementById("valTargets").textContent = s.targets + (s.targets === 1 ? " Target" : " Targets");
+    document.getElementById("valAction").textContent = s.action;
+    document.getElementById("sampleDesc").innerHTML = s.desc;
+}
+
+// Simulator Logic
+function updateSimulator(val) {
+    const depthM = (val / 100).toFixed(2);
+    document.getElementById("depthLabel").textContent = depthM + " m";
+    const canvas = document.getElementById("boreholeCanvas");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw host rock background (Grey Albitized Siltstone)
+    ctx.fillStyle = "#1c242b";
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw Pyrite Halo zone around x = 45%..68%
+    const pyrGrad = ctx.createLinearGradient(W*0.44, 0, W*0.70, 0);
+    pyrGrad.addColorStop(0, "rgba(255, 213, 79, 0.0)");
+    pyrGrad.addColorStop(0.5, "rgba(255, 213, 79, 0.25)");
+    pyrGrad.addColorStop(1, "rgba(255, 213, 79, 0.0)");
+    ctx.fillStyle = pyrGrad;
+    ctx.fillRect(W*0.44, 0, W*0.26, H);
+
+    // Draw diagonal Hydrothermal Albite + Emerald Vein crossing borehole at ~1.25m (x = 62.5% of W)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(W*0.54, 0);
+    ctx.lineTo(W*0.60, 0);
+    ctx.lineTo(W*0.70, H);
+    ctx.lineTo(W*0.64, H);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(224, 247, 250, 0.85)";
+    ctx.fill();
+
+    // Emerald pockets inside the vein
+    ctx.beginPath();
+    ctx.moveTo(W*0.56, 0);
+    ctx.lineTo(W*0.585, 0);
+    ctx.lineTo(W*0.685, H);
+    ctx.lineTo(W*0.66, H);
+    ctx.closePath();
+    ctx.fillStyle = "#00e676";
+    ctx.fill();
+    ctx.restore();
+
+    // Draw Safe Blasting Zone (0.0m to 0.85m)
+    ctx.strokeStyle = "rgba(41, 182, 246, 0.5)";
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(10, 20, W*0.42, H - 40);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#29b6f6";
+    ctx.font = "bold 12px Segoe UI";
+    ctx.fillText("ZONA SEGURA DE VOLADURA (0.0 - 0.85 m)", 20, 42);
+
+    ctx.fillStyle = "#ff5252";
+    ctx.fillText("ZONA PROTEGIDA: CAMA + ESMERALDA (1.25 m)", W*0.52, 42);
+
+    // Draw Borehole channel in center (y = H/2 - 16 to H/2 + 16)
+    const by = H / 2 - 14;
+    ctx.fillStyle = "#090d12";
+    ctx.fillRect(0, by, W * 0.96, 28);
+    ctx.strokeStyle = "#37474f";
+    ctx.strokeRect(0, by, W * 0.96, 28);
+
+    // Draw Probe Rod entering up to `val` (0..200 -> 0..W*0.95)
+    const probeX = (val / 200) * (W * 0.94);
+    ctx.fillStyle = "#90a4ae";
+    ctx.fillRect(0, by + 8, Math.max(0, probeX - 18), 12);
+
+    // Probe optical head
+    ctx.fillStyle = "#00e676";
+    ctx.fillRect(Math.max(0, probeX - 18), by + 6, 18, 16);
+
+    // Laser excitation fan from probe tip
+    const d = parseFloat(depthM);
+    const isEmeraldZone = (d >= 1.18 && d <= 1.34);
+    const isPyriteZone = (d >= 0.90 && d < 1.18) || (d > 1.34 && d <= 1.48);
+
+    ctx.beginPath();
+    ctx.arc(probeX, H/2, isEmeraldZone ? 34 : 20, 0, Math.PI * 2);
+    ctx.fillStyle = isEmeraldZone ? "rgba(255, 23, 68, 0.55)" : "rgba(124, 77, 255, 0.30)";
+    ctx.fill();
+
+    // Update Sensor Readouts
+    const lifEl = document.getElementById("simLif");
+    const pyrEl = document.getElementById("simPyr");
+    const acouEl = document.getElementById("simAcou");
+    const albEl = document.getElementById("simAlb");
+    const alertEl = document.getElementById("simAlert");
+
+    if (isEmeraldZone) {
+        lifEl.textContent = "4,890 cuentas (¡PICO Cr³⁺!)";
+        lifEl.style.color = "#ff5252";
+        pyrEl.textContent = "18.4 mV (Alto)";
+        acouEl.textContent = "2,150 m/s (Fractura/Cama)";
+        albEl.textContent = "Albita Blanca + Berilo";
+        alertEl.style.background = "rgba(255, 82, 82, 0.18)";
+        alertEl.style.borderColor = "#ff5252";
+        alertEl.style.color = "#ff8a80";
+        alertEl.innerHTML = "🚨 ¡ESMERALDA DETECTADA A " + depthM + " m! Destello de Cromo (680 nm) confirmado. PROHIBIDO cargar explosivo en el fondo. Taponar y volar solo hasta 0.85 m; abrir veta con cuña hidráulica.";
+    } else if (isPyriteZone) {
+        lifEl.textContent = "45 cuentas (Bajo)";
+        lifEl.style.color = "#ffd54f";
+        pyrEl.textContent = "24.6 mV (¡CORDÓN PIRITA!)";
+        acouEl.textContent = "3,420 m/s (Transición)";
+        albEl.textContent = "Banda Pirita (FeS₂)";
+        alertEl.style.background = "rgba(255, 213, 79, 0.14)";
+        alertEl.style.borderColor = "#ffd54f";
+        alertEl.style.color = "#ffe082";
+        alertEl.innerHTML = "⚠️ ALERTA PRECURSORA A " + depthM + " m: La bobina detecta cordón denso de Pirita (FeS₂) y caída de velocidad acústica. Te estás acercando a la cama de albita y esmeralda.";
+    } else {
+        lifEl.textContent = "12 cuentas (Ruido base)";
+        lifEl.style.color = "#00e676";
+        pyrEl.textContent = "0.8 mV (Estéril)";
+        acouEl.textContent = "4,850 m/s (Roca Densa)";
+        albEl.textContent = "Lodolita Gris Estéril";
+        alertEl.style.background = "rgba(0, 230, 118, 0.10)";
+        alertEl.style.borderColor = "#00e676";
+        alertEl.style.color = "#b9f6ca";
+        alertEl.innerHTML = "✅ ROCA CAJA ESTÉRIL A " + depthM + " m: Lodolita albitizada compacta (4,850 m/s). Sin señal de cromo ni sulfuros en este tramo.";
+    }
+}
+
+// Interactive BOM Table
+const BOM_ITEMS = [
+    { name: "Cerebro IA NVIDIA Jetson Orin Nano (8GB) + SSD", spec: "40 TOPS, procesa sin internet en el túnel", role: "Ejecuta la segmentación y reconstrucción 3D de la veta", price: 350, checked: true },
+    { name: "Cámara Monocromática Global Shutter (Canal 680 nm)", spec: "Alta sensibilidad NIR (Basler / Hikrobot USB3)", role: "Ve únicamente el destello rojo de las esmeraldas en oscuridad", price: 420, checked: true },
+    { name: "Filtro Óptico Pasa-Banda 685 nm ± 10 nm", spec: "Filtro interferencial OD4 (Thorlabs / Edmund)", role: "Bloquea el láser azul y deja pasar solo la firma del Cromo (Cr³⁺)", price: 240, checked: true },
+    { name: "Módulo Láser de Excitación 405 nm / 450 nm (500 mW)", spec: "Óptica lineal industrial con carcasa de seguridad", role: "Ilumina la pared o banda para activar la fluorescencia", price: 180, checked: true },
+    { name: "Cámara Mineralógica RGB + Lente C-Mount 8mm", spec: "Alta velocidad para color y textura", role: "Identifica la cama blanca de albita y los cordones de pirita", price: 320, checked: true },
+    { name: "Sonda Endoscópica de Barreno (2.5 metros, IP68)", spec: "Ø 16mm con fibra UV/680nm + Bobina Pirita + Encoder", role: "Se mete en los barrenos perforados antes de poner Indugel", price: 650, checked: true },
+    { name: "Módulo de Ultrasonido Cross-Hole (40–50 kHz)", spec: "Par de transductores piezoeléctricos de roca + Pulser", role: "Mide la densidad entre barrenos y detecta cavidades ('ceniceros')", price: 1200, checked: true },
+    { name: "Proyector Láser Verde Galvo (532 nm)", spec: "Escáner XY 20 kpps", role: "Dibuja sobre la pared de roca la línea de la veta y zonas prohibidas", price: 220, checked: true },
+    { name: "Maletín Blindado IP67 + Batería LiFePO4 24V + Pantalla 10\"", spec: "Autonomía 8 horas en socavón húmedo", role: "Protección total en frente de mina", price: 620, checked: true }
+];
+
+function initBOM() {
+    const tbody = document.getElementById("bomBody");
+    tbody.innerHTML = BOM_ITEMS.map((item, i) => `
+        <tr>
+            <td class="chk-col"><input type="checkbox" ${item.checked ? "checked" : ""} onchange="toggleBOM(${i}, this.checked)" /></td>
+            <td style="font-weight:700;color:#fff;">${item.name}</td>
+            <td style="color:var(--muted);">${item.spec}</td>
+            <td>${item.role}</td>
+            <td style="font-family:monospace;font-weight:700;color:var(--gold);">$${item.price.toLocaleString()}</td>
+        </tr>
+    `).join("");
+    recalcBOM();
+}
+
+function toggleBOM(idx, state) {
+    BOM_ITEMS[idx].checked = state;
+    recalcBOM();
+}
+
+function recalcBOM() {
+    const total = BOM_ITEMS.reduce((acc, it) => acc + (it.checked ? it.price : 0), 0);
+    document.getElementById("bomTotal").textContent = "$" + total.toLocaleString() + " USD";
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    initTabs();
+    initBOM();
+    updateSimulator(125);
+    document.getElementById("depthSlider").value = 125;
+});
+</script>
+</body>
+</html>
